@@ -72,22 +72,23 @@ const initDb = async () => {
     `);
 
     // Seed dummy users if admin doesn't exist
-    const row = await db.get(`SELECT id FROM users WHERE email = ?`, ['admin@wishtree.com']);
+    const row = await db.get(`SELECT id FROM users WHERE email = ?`, ['admin@gmail.com']);
     if (!row) {
       console.log("Seeding initial users...");
       const salt = await bcrypt.genSalt(10);
-      const hash = await bcrypt.hash('password123', salt);
+      const defaultHash = await bcrypt.hash('password123', salt);
+      const adminHash = await bcrypt.hash('Admin123$%^', salt);
 
       const users = [
-        ['Admin User', 'admin@wishtree.com', hash, 'Admin', 'Administrator'],
-        ['John Designer', 'designer@wishtree.com', hash, 'Designer', 'Senior UI Designer'],
-        ['Jane Manager', 'manager@wishtree.com', hash, 'Manager', 'Project Manager'],
-        ['Mark Marketer', 'dm@wishtree.com', hash, 'Digital Marketing', 'Marketing Lead']
+        ['Admin User', 'admin@gmail.com', adminHash, 'Admin', 'Administrator'],
+        ['John Designer', 'designer@wishtree.com', defaultHash, 'Designer', 'Senior UI Designer'],
+        ['Jane Manager', 'manager@wishtree.com', defaultHash, 'Manager', 'Project Manager'],
+        ['Mark Marketer', 'dm@wishtree.com', defaultHash, 'Digital Marketing', 'Marketing Lead']
       ];
 
       for (let user of users) {
         await db.run(
-          `INSERT INTO users (name, email, password_hash, role, designation) VALUES (?, ?, ?, ?, ?)`,
+          `INSERT OR IGNORE INTO users (name, email, password_hash, role, designation) VALUES (?, ?, ?, ?, ?)`,
           user
         );
       }
