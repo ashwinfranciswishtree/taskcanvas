@@ -43,7 +43,7 @@ const Login = () => {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-slate-700 font-medium placeholder:text-slate-400 placeholder:font-normal"
-                  placeholder="admin@wishtree.com"
+                  placeholder="admin@gmail.com"
                   required
                 />
               </div>
@@ -78,10 +78,9 @@ const Login = () => {
           <div className="mt-8 text-center bg-slate-50 rounded-xl p-4 border border-slate-200">
             <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Demo Accounts</h4>
             <div className="flex flex-wrap gap-2 justify-center text-xs">
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Admin: admin@wishtree.com</span>
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Designer: designer@wishtree.com</span>
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Manager: manager@wishtree.com</span>
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Password: password123</span>
+              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Admin: admin@gmail.com (Admin123$%^)</span>
+              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Designer: designer@wishtree.com (password123)</span>
+              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Manager: manager@wishtree.com (password123)</span>
             </div>
           </div>
         </div>
