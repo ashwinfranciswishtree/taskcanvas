@@ -3,6 +3,7 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
+const initDb = require('./init_db');
 
 // Fix for Render deployments that don't use blueprints and lack env vars
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'df89248b-3472-4d23-9584-c5a4982f1b40';
@@ -36,6 +37,13 @@ app.get('/', (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+
+// Initialize database before starting server
+initDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}).catch(err => {
+  console.error("Failed to start server due to database error:", err);
+  process.exit(1);
 });

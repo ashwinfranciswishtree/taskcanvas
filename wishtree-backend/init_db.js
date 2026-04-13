@@ -95,11 +95,15 @@ const initDb = async () => {
     }
 
     console.log("Database initialization complete!");
-    process.exit(0);
+    return true;
   } catch (error) {
     console.error("Error initializing database:", error);
-    process.exit(1);
+    throw error;
   }
 };
 
-initDb();
+if (require.main === module) {
+  initDb().then(() => process.exit(0)).catch(() => process.exit(1));
+}
+
+module.exports = initDb;
