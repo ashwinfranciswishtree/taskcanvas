@@ -10,10 +10,11 @@ import {
   XCircle,
   Users, 
   Settings,
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 
-const Sidebar = () => {
+const Sidebar = ({ isOpen, setIsOpen }) => {
   const { user, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
@@ -34,16 +35,20 @@ const Sidebar = () => {
   };
 
   return (
-    <div className="w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-screen fixed top-0 left-0 transition-colors duration-300">
-      <div className="h-16 flex items-center px-6 border-b border-slate-200 dark:border-slate-700 transition-colors duration-300">
+    <div className={`w-64 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 flex flex-col h-screen fixed top-0 left-0 z-30 transition-transform duration-300 transform ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+      <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-slate-700 transition-colors duration-300">
         <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-indigo-400 bg-clip-text text-transparent">
           Wishtree Creatives
         </h1>
+        <button className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-200" onClick={() => setIsOpen(false)}>
+          <X size={20} />
+        </button>
       </div>
       
       <div className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
         {navItems.filter(item => item.roles.includes(user?.role)).map((item) => (
           <NavLink
+            onClick={() => setIsOpen(false)}
             key={item.name}
             to={item.path}
             className={({ isActive }) =>

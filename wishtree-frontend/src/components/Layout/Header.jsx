@@ -1,16 +1,19 @@
 import React, { useContext } from 'react';
 import { AuthContext } from '../../context/AuthContext';
 import { ThemeContext } from '../../context/ThemeContext';
-import { Bell, Search, Sun, Moon } from 'lucide-react';
+import { Bell, Search, Sun, Moon, Menu } from 'lucide-react';
 
-const Header = () => {
+const Header = ({ toggleSidebar }) => {
   const { user } = useContext(AuthContext);
   const { isDarkMode, toggleDarkMode } = useContext(ThemeContext);
 
   return (
-    <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-8 sticky top-0 z-10 transition-colors duration-300">
-      <div className="flex-1 max-w-xl">
-        <div className="relative group">
+    <header className="h-16 bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10 transition-colors duration-300">
+      <div className="flex-1 flex items-center gap-3 w-full max-w-xl">
+        <button onClick={toggleSidebar} className="md:hidden p-2 -ml-2 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+          <Menu size={24} />
+        </button>
+        <div className="relative group w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-primary transition-colors" size={20} />
           <input 
             type="text" 
@@ -29,12 +32,12 @@ const Header = () => {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-800"></span>
         </button>
         
-        <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
-          <div className="text-right">
-            <div className="text-sm font-semibold text-slate-900">{user?.name}</div>
+        <div className="flex items-center gap-3 border-l border-slate-200 pl-4 md:pl-6">
+          <div className="text-right hidden sm:block">
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user?.name}</div>
             <div className="text-xs text-slate-500 font-medium">{user?.role}</div>
           </div>
-          <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white font-bold shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-primary to-secondary flex items-center justify-center text-white font-bold shadow-sm cursor-pointer hover:shadow-md transition-shadow">
             {user?.name?.charAt(0)}
           </div>
         </div>
