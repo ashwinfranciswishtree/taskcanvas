@@ -4,6 +4,9 @@ const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
 
+// Fix for Render deployments that don't use blueprints and lack env vars
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'df89248b-3472-4d23-9584-c5a4982f1b40';
+
 const app = express();
 
 // Middleware
