@@ -51,7 +51,28 @@ const Feedback = () => {
   }, []);
 
   const handleFileChange = (e) => {
-    setFiles(Array.from(e.target.files));
+    const selectedFiles = Array.from(e.target.files);
+    const validFiles = [];
+    let hasError = false;
+
+    selectedFiles.forEach(file => {
+      // 50KB limit
+      if (file.size > 50 * 1024) {
+        hasError = true;
+      } else {
+        validFiles.push(file);
+      }
+    });
+
+    if (hasError) {
+      toast.error('Files over 50KB are not allowed and were removed.');
+    }
+
+    setFiles(prev => [...prev, ...validFiles]);
+  };
+
+  const removeFile = (indexToRemove) => {
+    setFiles(files.filter((_, index) => index !== indexToRemove));
   };
 
   const handleSubmit = async (e) => {
@@ -254,8 +275,40 @@ const Feedback = () => {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Upload Images</label>
-                  <input type="file" multiple accept="image/*" onChange={handleFileChange} className="input-field file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer p-0 items-center justify-center border-dashed border-2 bg-slate-50 relative" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Upload Images (Max 50KB each)</label>
+                  <label className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-slate-200 border-dashed rounded-xl appearance-none cursor-pointer hover:border-primary focus:outline-none hover:bg-slate-50/50">
+                    <span className="flex items-center space-x-2">
+                      <Plus className="w-6 h-6 text-slate-400" />
+                      <span className="font-medium text-slate-600">
+                        Drop files to Attach, or browse
+                      </span>
+                    </span>
+                    <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                  </label>
+                  
+                  {files.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {files.map((file, index) => (
+                        <div key={index} className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-video shadow-sm">
+                          <img 
+                            src={URL.createObjectURL(file)} 
+                            alt={`Preview ${index}`} 
+                            className="w-full h-full object-cover"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="absolute top-2 right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md hover:bg-rose-600"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] truncate px-2 py-1">
+                            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="col-span-2 flex items-center gap-3 bg-emerald-50 p-4 rounded-xl border border-emerald-100">
                   <input type="checkbox" id="approvecb" className="w-5 h-5 accent-emerald-600 rounded cursor-pointer" checked={formData.approved} onChange={e => setFormData({...formData, approved: e.target.checked})} />
@@ -307,8 +360,40 @@ const Feedback = () => {
                   </select>
                 </div>
                 <div className="col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Add Additional Images</label>
-                  <input type="file" multiple accept="image/*" onChange={handleFileChange} className="input-field file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer p-0 items-center justify-center border-dashed border-2 bg-slate-50 relative" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Add Additional Images (Max 50KB each)</label>
+                  <label className="flex items-center justify-center w-full h-32 px-4 transition bg-white border-2 border-slate-200 border-dashed rounded-xl appearance-none cursor-pointer hover:border-primary focus:outline-none hover:bg-slate-50/50">
+                    <span className="flex items-center space-x-2">
+                      <Plus className="w-6 h-6 text-slate-400" />
+                      <span className="font-medium text-slate-600">
+                        Drop files to Attach, or browse
+                      </span>
+                    </span>
+                    <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
+                  </label>
+
+                  {files.length > 0 && (
+                    <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      {files.map((file, index) => (
+                        <div key={index} className="relative group rounded-lg overflow-hidden border border-slate-200 bg-slate-50 aspect-video shadow-sm">
+                          <img 
+                            src={URL.createObjectURL(file)} 
+                            alt={`Preview ${index}`} 
+                            className="w-full h-full object-cover"
+                          />
+                          <button 
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="absolute top-2 right-2 bg-rose-500 text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md hover:bg-rose-600"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                          <div className="absolute bottom-0 inset-x-0 bg-black/50 text-white text-[10px] truncate px-2 py-1">
+                            {file.name} ({(file.size / 1024).toFixed(1)} KB)
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="col-span-2 flex items-center gap-3">
                   <input type="checkbox" id="replaceImages" className="w-5 h-5 accent-rose-600 rounded cursor-pointer" checked={editFormData.replaceImages} onChange={e => setEditFormData({...editFormData, replaceImages: e.target.checked})} />
