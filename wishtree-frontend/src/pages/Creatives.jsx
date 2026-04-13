@@ -106,7 +106,7 @@ const Creatives = () => {
                 {project.images && project.images.length > 0 && (
                   <div 
                     className="h-32 w-full rounded-lg bg-cover bg-center mb-6 cursor-pointer border border-slate-200 shadow-sm"
-                    style={{ backgroundImage: `url(${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${project.images[0]})` }}
+                    style={{ backgroundImage: `url("${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${project.images[0]}")` }}
                     onClick={() => setViewerImages(project.images)}
                   />
                 )}

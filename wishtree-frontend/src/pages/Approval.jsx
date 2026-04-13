@@ -67,7 +67,7 @@ const Approval = () => {
                 {project.images && project.images.length > 0 && (
                   <div 
                     className="h-40 w-full rounded-xl bg-cover bg-center mb-6 cursor-pointer border border-slate-200 shadow-sm hover:opacity-90 transition-opacity"
-                    style={{ backgroundImage: `url(${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${project.images[0]})` }}
+                    style={{ backgroundImage: `url("${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${project.images[0]}")` }}
                     onClick={() => setViewerImages(project.images)}
                   />
                 )}
