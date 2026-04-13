@@ -5,7 +5,8 @@ const FullscreenViewer = ({ images, initialIndex = 0, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
 
   const handleDownload = () => {
-    const imageUrl = `http://localhost:5000${images[currentIndex]}`;
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const imageUrl = `${API_BASE_URL}${images[currentIndex]}`;
     const fileName = images[currentIndex].split('/').pop();
     
     fetch(imageUrl)
@@ -58,7 +59,7 @@ const FullscreenViewer = ({ images, initialIndex = 0, onClose }) => {
 
       <div className="relative w-full max-w-6xl max-h-[85vh] flex items-center justify-center group">
         <img 
-          src={`http://localhost:5000${images[currentIndex]}`} 
+          src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${images[currentIndex]}`} 
           alt="Preview Gallery" 
           className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl transition-transform"
         />
@@ -86,7 +87,7 @@ const FullscreenViewer = ({ images, initialIndex = 0, onClose }) => {
           {images.map((img, idx) => (
             <img 
               key={idx}
-              src={`http://localhost:5000${img}`}
+              src={`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${img}`}
               alt={`Thumbnail ${idx}`}
               onClick={() => setCurrentIndex(idx)}
               className={`h-16 w-16 object-cover rounded-md cursor-pointer transition-all border-2 ${idx === currentIndex ? 'border-primary shadow-lg scale-110' : 'border-transparent opacity-50 hover:opacity-100'}`}

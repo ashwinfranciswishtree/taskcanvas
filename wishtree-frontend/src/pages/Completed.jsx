@@ -91,7 +91,7 @@ const Completed = () => {
                 {project.images && project.images.length > 0 ? (
                   <div 
                     className="h-32 w-full rounded-lg bg-cover bg-center mb-4 cursor-pointer shadow-sm relative overflow-hidden group/img"
-                    style={{ backgroundImage: `url(http://localhost:5000${project.images[0]})` }}
+                    style={{ backgroundImage: `url(${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${project.images[0]})` }}
                     onClick={() => setViewerImages(project.images)}
                   >
                     <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center">
