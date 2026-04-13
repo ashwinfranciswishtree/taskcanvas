@@ -10,7 +10,7 @@ const logActivity = async (db, projectId, userId, action, fromStatus = null, toS
 const getProjects = async (req, res) => {
   try {
     const db = await getDbConnection();
-    const { status, is_rejected } = req.query;
+    const { status, is_rejected, search } = req.query;
     let query = `
       SELECT p.*, u.name as assigned_designer_name, c.name as created_by_name,
       (SELECT json_group_array(image_url) FROM project_images qi WHERE qi.project_id = p.id) as images
@@ -23,6 +23,10 @@ const getProjects = async (req, res) => {
     if (status && status !== 'all') {
       query += ` AND p.status = ?`;
       params.push(status);
+    }
+    if (search) {
+      query += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`);
     }
     if (is_rejected !== undefined) {
       query += ` AND p.is_rejected = ?`;

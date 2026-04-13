@@ -14,6 +14,7 @@ import Completed from './pages/Completed';
 import UserManagement from './pages/UserManagement';
 import Settings from './pages/Settings';
 import Rejected from './pages/Rejected';
+import Search from './pages/Search';
 
 function App() {
   return (
@@ -65,6 +66,12 @@ function App() {
           <Route path="/settings" element={
             <ProtectedRoute roles={['Admin']}>
               <Layout><Settings /></Layout>
+            </ProtectedRoute>
+          } />
+
+          <Route path="/search" element={
+            <ProtectedRoute>
+              <Layout><Search /></Layout>
             </ProtectedRoute>
           } />
         </Routes>
