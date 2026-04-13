@@ -75,14 +75,7 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-8 text-center bg-slate-50 rounded-xl p-4 border border-slate-200">
-            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Demo Accounts</h4>
-            <div className="flex flex-wrap gap-2 justify-center text-xs">
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Admin: admin@gmail.com (Admin123$%^)</span>
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Designer: designer@wishtree.com (password123)</span>
-              <span className="px-2 py-1 bg-white border border-slate-200 rounded-md font-medium text-slate-600">Manager: manager@wishtree.com (password123)</span>
-            </div>
-          </div>
+
         </div>
       </div>
     </div>
