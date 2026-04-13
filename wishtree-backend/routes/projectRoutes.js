@@ -12,7 +12,8 @@ const {
   deleteProject,
   addComment, 
   getComments, 
-  getDashboardStats 
+  getDashboardStats,
+  getNotifications
 } = require('../controllers/projectController');
 
 // Multer setup for image uploads
@@ -41,6 +42,7 @@ const upload = multer({
 
 router.use(protect);
 
+router.get('/notifications', getNotifications);
 router.get('/stats', getDashboardStats);
 router.get('/', getProjects);
 router.post('/', upload.array('images', 10), createProject);

@@ -272,4 +272,21 @@ const deleteProject = async (req, res) => {
   }
 };
 
-module.exports = { getProjects, getProjectById, createProject, updateProjectStatus, updateProject, deleteProject, addComment, getComments, getDashboardStats };
+const getNotifications = async (req, res) => {
+  try {
+    const db = await getDbConnection();
+    const notifications = await db.all(`
+      SELECT a.*, p.name as project_name, u.name as user_name, u.role as user_role
+      FROM activity_logs a
+      JOIN projects p ON a.project_id = p.id
+      LEFT JOIN users u ON a.user_id = u.id
+      ORDER BY a.created_at DESC
+      LIMIT 20
+    `);
+    res.json(notifications);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+module.exports = { getProjects, getProjectById, createProject, updateProjectStatus, updateProject, deleteProject, addComment, getComments, getDashboardStats, getNotifications };
