@@ -6,92 +6,82 @@ const initDb = async () => {
     console.log("Initializing database schema...");
     const db = await getDbConnection();
 
-    await db.exec(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         email TEXT UNIQUE NOT NULL,
         password_hash TEXT NOT NULL,
         role TEXT NOT NULL,
         designation TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await db.exec(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         name TEXT NOT NULL,
         description TEXT,
         status TEXT DEFAULT 'Feedback',
         priority TEXT DEFAULT 'Medium',
-        due_date DATETIME,
+        due_date TIMESTAMP,
         assigned_designer_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         created_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        client_approval BOOLEAN DEFAULT 0,
-        passed_checks BOOLEAN DEFAULT 0,
-        approved BOOLEAN DEFAULT 0,
-        scheduled_for_ads BOOLEAN DEFAULT 0,
-        used_for_ads BOOLEAN DEFAULT 0,
-        is_rejected BOOLEAN DEFAULT 0,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        client_approval BOOLEAN DEFAULT FALSE,
+        passed_checks BOOLEAN DEFAULT FALSE,
+        approved BOOLEAN DEFAULT FALSE,
+        scheduled_for_ads BOOLEAN DEFAULT FALSE,
+        used_for_ads BOOLEAN DEFAULT FALSE,
+        is_rejected BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await db.exec(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS project_images (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         image_url TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await db.exec(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS comments (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         message TEXT NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    await db.exec(`
+    await db.query(`
       CREATE TABLE IF NOT EXISTS activity_logs (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        id SERIAL PRIMARY KEY,
         project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
         user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
         action TEXT NOT NULL,
         from_status TEXT,
         to_status TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
-    // Seed dummy users if admin doesn't exist
-    const row = await db.get(`SELECT id FROM users WHERE email = ?`, ['admin@gmail.com']);
-    if (!row) {
-      console.log("Seeding initial users...");
+    // Seed admin if doesn't exist
+    const { rows } = await db.query(`SELECT id FROM users WHERE email = $1`, ['admin@gmail.com']);
+    if (rows.length === 0) {
+      console.log("Seeding Admin user...");
       const salt = await bcrypt.genSalt(10);
-      const defaultHash = await bcrypt.hash('password123', salt);
       const adminHash = await bcrypt.hash('Admin123$%^', salt);
 
-      const users = [
-        ['Admin User', 'admin@gmail.com', adminHash, 'Admin', 'Administrator'],
-        ['John Designer', 'designer@wishtree.com', defaultHash, 'Designer', 'Senior UI Designer'],
-        ['Jane Manager', 'manager@wishtree.com', defaultHash, 'Manager', 'Project Manager'],
-        ['Mark Marketer', 'dm@wishtree.com', defaultHash, 'Digital Marketing', 'Marketing Lead']
-      ];
-
-      for (let user of users) {
-        await db.run(
-          `INSERT OR IGNORE INTO users (name, email, password_hash, role, designation) VALUES (?, ?, ?, ?, ?)`,
-          user
-        );
-      }
+      await db.query(
+        `INSERT INTO users (name, email, password_hash, role, designation) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+        ['Admin User', 'admin@gmail.com', adminHash, 'Admin', 'Administrator']
+      );
     }
 
     console.log("Database initialization complete!");

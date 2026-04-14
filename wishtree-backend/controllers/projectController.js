@@ -1,8 +1,8 @@
 const getDbConnection = require('../db');
 
 const logActivity = async (db, projectId, userId, action, fromStatus = null, toStatus = null) => {
-  await db.run(
-    'INSERT INTO activity_logs (project_id, user_id, action, from_status, to_status) VALUES (?, ?, ?, ?, ?)',
+  await db.query(
+    'INSERT INTO activity_logs (project_id, user_id, action, from_status, to_status) VALUES ($1, $2, $3, $4, $5)',
     [projectId, userId, action, fromStatus, toStatus]
   );
 };
@@ -13,7 +13,7 @@ const getProjects = async (req, res) => {
     const { status, is_rejected, search } = req.query;
     let query = `
       SELECT p.*, u.name as assigned_designer_name, c.name as created_by_name,
-      (SELECT json_group_array(image_url) FROM project_images qi WHERE qi.project_id = p.id) as images
+      (SELECT json_agg(image_url) FROM project_images qi WHERE qi.project_id = p.id) as images
       FROM projects p
       LEFT JOIN users u ON p.assigned_designer_id = u.id
       LEFT JOIN users c ON p.created_by_id = c.id
@@ -21,28 +21,26 @@ const getProjects = async (req, res) => {
     `;
     let params = [];
     if (status && status !== 'all') {
-      query += ` AND p.status = ?`;
       params.push(status);
+      query += ` AND p.status = $${params.length}`;
     }
     if (search) {
-      query += ` AND (p.name LIKE ? OR p.description LIKE ?)`;
       params.push(`%${search}%`, `%${search}%`);
+      query += ` AND (p.name LIKE $${params.length - 1} OR p.description LIKE $${params.length})`;
     }
     if (is_rejected !== undefined) {
-      query += ` AND p.is_rejected = ?`;
-      params.push(is_rejected);
+      params.push(is_rejected === 'true' || is_rejected === '1' || is_rejected === true);
+      query += ` AND p.is_rejected = $${params.length}`;
     } else {
-      query += ` AND p.is_rejected = 0`;
+      query += ` AND p.is_rejected = FALSE`;
     }
     query += ` ORDER BY p.created_at DESC`;
     
-    let rows = await db.all(query, params);
+    let { rows } = await db.query(query, params);
     
-    // SQLite json_group_array returns '[null]' if empty, so we map it cleanly:
+    // PG json_agg returns null if nothing aggregated
     rows = rows.map(r => {
-      let imgs = JSON.parse(r.images || '[]');
-      if (imgs.length === 1 && imgs[0] === null) imgs = [];
-      r.images = imgs;
+      r.images = r.images || [];
       return r;
     });
 
@@ -57,21 +55,19 @@ const getProjectById = async (req, res) => {
   const { id } = req.params;
   try {
     const db = await getDbConnection();
-    let row = await db.get(`
+    let { rows } = await db.query(`
       SELECT p.*, u.name as assigned_designer_name, c.name as created_by_name,
-      (SELECT json_group_array(image_url) FROM project_images qi WHERE qi.project_id = p.id) as images
+      (SELECT json_agg(image_url) FROM project_images qi WHERE qi.project_id = p.id) as images
       FROM projects p
       LEFT JOIN users u ON p.assigned_designer_id = u.id
       LEFT JOIN users c ON p.created_by_id = c.id
-      WHERE p.id = ?
+      WHERE p.id = $1
     `, [id]);
     
+    let row = rows[0];
     if (!row) return res.status(404).json({ message: 'Project not found' });
     
-    let imgs = JSON.parse(row.images || '[]');
-    if (imgs.length === 1 && imgs[0] === null) imgs = [];
-    row.images = imgs;
-
+    row.images = row.images || [];
     res.json(row);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -82,19 +78,19 @@ const createProject = async (req, res) => {
   const db = await getDbConnection();
   try {
     const { name, description, assigned_designer_id, priority } = req.body;
-    await db.run('BEGIN TRANSACTION');
+    await db.query('BEGIN');
     
-    const result = await db.run(
+    const { rows } = await db.query(
       `INSERT INTO projects (name, description, assigned_designer_id, created_by_id, priority, status) 
-       VALUES (?, ?, ?, ?, ?, 'Feedback')`,
+       VALUES ($1, $2, $3, $4, $5, 'Feedback') RETURNING id`,
       [name, description, assigned_designer_id || null, req.user.id, priority || 'Medium']
     );
-    const projectId = result.lastID;
+    const projectId = rows[0].id;
 
     if (req.files && req.files.length > 0) {
       for (const file of req.files) {
-        await db.run(
-          'INSERT INTO project_images (project_id, image_url) VALUES (?, ?)',
+        await db.query(
+          'INSERT INTO project_images (project_id, image_url) VALUES ($1, $2)',
           [projectId, `/uploads/${file.filename}`]
         );
       }
@@ -102,11 +98,11 @@ const createProject = async (req, res) => {
 
     await logActivity(db, projectId, req.user.id, 'Created Project', null, 'Feedback');
     
-    await db.run('COMMIT');
-    const newProject = await db.get('SELECT * FROM projects WHERE id = ?', [projectId]);
-    res.status(201).json(newProject);
+    await db.query('COMMIT');
+    const newProjectResult = await db.query('SELECT * FROM projects WHERE id = $1', [projectId]);
+    res.status(201).json(newProjectResult.rows[0]);
   } catch (error) {
-    await db.run('ROLLBACK');
+    await db.query('ROLLBACK');
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
@@ -118,27 +114,28 @@ const updateProjectStatus = async (req, res) => {
   const db = await getDbConnection();
   
   try {
-    await db.run('BEGIN TRANSACTION');
-    const projectRow = await db.get('SELECT status FROM projects WHERE id = ?', [id]);
+    await db.query('BEGIN');
+    const { rows: projectRows } = await db.query('SELECT status FROM projects WHERE id = $1', [id]);
+    const projectRow = projectRows[0];
     if (!projectRow) return res.status(404).json({ message: 'Project not found' });
     const fromStatus = projectRow.status;
 
     let queryParts = [];
     let params = [];
 
-    if (status) { queryParts.push(`status = ?`); params.push(status); }
-    if (client_approval !== undefined) { queryParts.push(`client_approval = ?`); params.push(client_approval); }
-    if (passed_checks !== undefined) { queryParts.push(`passed_checks = ?`); params.push(passed_checks); }
-    if (approved !== undefined) { queryParts.push(`approved = ?`); params.push(approved); }
-    if (scheduled_for_ads !== undefined) { queryParts.push(`scheduled_for_ads = ?`); params.push(scheduled_for_ads); }
-    if (used_for_ads !== undefined) { queryParts.push(`used_for_ads = ?`); params.push(used_for_ads); }
-    if (is_rejected !== undefined) { queryParts.push(`is_rejected = ?`); params.push(is_rejected); }
+    if (status) { params.push(status); queryParts.push(`status = $${params.length}`); }
+    if (client_approval !== undefined) { params.push(client_approval); queryParts.push(`client_approval = $${params.length}`); }
+    if (passed_checks !== undefined) { params.push(passed_checks); queryParts.push(`passed_checks = $${params.length}`); }
+    if (approved !== undefined) { params.push(approved); queryParts.push(`approved = $${params.length}`); }
+    if (scheduled_for_ads !== undefined) { params.push(scheduled_for_ads); queryParts.push(`scheduled_for_ads = $${params.length}`); }
+    if (used_for_ads !== undefined) { params.push(used_for_ads); queryParts.push(`used_for_ads = $${params.length}`); }
+    if (is_rejected !== undefined) { params.push(is_rejected); queryParts.push(`is_rejected = $${params.length}`); }
 
     queryParts.push(`updated_at = CURRENT_TIMESTAMP`);
     params.push(id);
     
-    const updateQuery = `UPDATE projects SET ${queryParts.join(', ')} WHERE id = ?`;
-    await db.run(updateQuery, params);
+    const updateQuery = `UPDATE projects SET ${queryParts.join(', ')} WHERE id = $${params.length}`;
+    await db.query(updateQuery, params);
 
     if (status && status !== fromStatus) {
       await logActivity(db, id, req.user.id, 'Moved Stage', fromStatus, status);
@@ -146,11 +143,11 @@ const updateProjectStatus = async (req, res) => {
       await logActivity(db, id, req.user.id, 'Updated Details', fromStatus, fromStatus);
     }
 
-    await db.run('COMMIT');
-    const updatedProject = await db.get('SELECT * FROM projects WHERE id = ?', [id]);
-    res.json(updatedProject);
+    await db.query('COMMIT');
+    const { rows: updatedRows } = await db.query('SELECT * FROM projects WHERE id = $1', [id]);
+    res.json(updatedRows[0]);
   } catch (error) {
-    await db.run('ROLLBACK');
+    await db.query('ROLLBACK');
     console.error(error);
     res.status(500).json({ message: 'Server error' });
   }
@@ -161,12 +158,12 @@ const addComment = async (req, res) => {
   const { message } = req.body;
   try {
     const db = await getDbConnection();
-    const result = await db.run(
-      'INSERT INTO comments (project_id, user_id, message) VALUES (?, ?, ?)',
+    const { rows: resultRows } = await db.query(
+      'INSERT INTO comments (project_id, user_id, message) VALUES ($1, $2, $3) RETURNING id',
       [id, req.user.id, message]
     );
-    const comment = await db.get('SELECT * FROM comments WHERE id = ?', [result.lastID]);
-    res.status(201).json(comment);
+    const { rows: commentRows } = await db.query('SELECT * FROM comments WHERE id = $1', [resultRows[0].id]);
+    res.status(201).json(commentRows[0]);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -176,14 +173,14 @@ const getComments = async (req, res) => {
   const { id } = req.params;
   try {
     const db = await getDbConnection();
-    const comments = await db.all(`
+    const { rows } = await db.query(`
       SELECT c.*, u.name as user_name, u.role as user_role 
       FROM comments c
       JOIN users u ON c.user_id = u.id
-      WHERE c.project_id = ?
+      WHERE c.project_id = $1
       ORDER BY c.created_at ASC
     `, [id]);
-    res.json(comments);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -192,18 +189,18 @@ const getComments = async (req, res) => {
 const getDashboardStats = async (req, res) => {
   try {
     const db = await getDbConnection();
-    const totalProjects = (await db.get('SELECT COUNT(*) as count FROM projects WHERE is_rejected = 0')).count;
-    const feedbackPending = (await db.get("SELECT COUNT(*) as count FROM projects WHERE status = 'Feedback' AND is_rejected = 0")).count;
-    const creativesPending = (await db.get("SELECT COUNT(*) as count FROM projects WHERE status = 'Creatives' AND is_rejected = 0")).count;
-    const approvalPending = (await db.get("SELECT COUNT(*) as count FROM projects WHERE status = 'Approval' AND is_rejected = 0")).count;
-    const completedTasks = (await db.get("SELECT COUNT(*) as count FROM projects WHERE status = 'Completed' AND is_rejected = 0")).count;
-    const overdueTasks = (await db.get("SELECT COUNT(*) as count FROM projects WHERE due_date < CURRENT_TIMESTAMP AND status != 'Completed' AND is_rejected = 0")).count;
-    const rejectedTasks = (await db.get('SELECT COUNT(*) as count FROM projects WHERE is_rejected = 1')).count;
+    const totalProjects = (await db.query('SELECT COUNT(*) as count FROM projects WHERE is_rejected = FALSE')).rows[0].count;
+    const feedbackPending = (await db.query("SELECT COUNT(*) as count FROM projects WHERE status = 'Feedback' AND is_rejected = FALSE")).rows[0].count;
+    const creativesPending = (await db.query("SELECT COUNT(*) as count FROM projects WHERE status = 'Creatives' AND is_rejected = FALSE")).rows[0].count;
+    const approvalPending = (await db.query("SELECT COUNT(*) as count FROM projects WHERE status = 'Approval' AND is_rejected = FALSE")).rows[0].count;
+    const completedTasks = (await db.query("SELECT COUNT(*) as count FROM projects WHERE status = 'Completed' AND is_rejected = FALSE")).rows[0].count;
+    const overdueTasks = (await db.query("SELECT COUNT(*) as count FROM projects WHERE due_date < CURRENT_TIMESTAMP AND status != 'Completed' AND is_rejected = FALSE")).rows[0].count;
+    const rejectedTasks = (await db.query('SELECT COUNT(*) as count FROM projects WHERE is_rejected = TRUE')).rows[0].count;
 
     // For the graph activity overview
-    const monthlyActivity = await db.all(`
+    const { rows: monthlyActivity } = await db.query(`
       SELECT 
-        substr(created_at, 1, 7) as month,
+        to_char(created_at, 'YYYY-MM') as month,
         COUNT(*) as count
       FROM projects 
       GROUP BY month
@@ -231,32 +228,32 @@ const updateProject = async (req, res) => {
   const { name, description, assigned_designer_id, priority, replaceImages } = req.body;
   try {
     const db = await getDbConnection();
-    await db.run('BEGIN TRANSACTION');
+    await db.query('BEGIN');
     
-    await db.run(
-      'UPDATE projects SET name = ?, description = ?, assigned_designer_id = ?, priority = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    await db.query(
+      'UPDATE projects SET name = $1, description = $2, assigned_designer_id = $3, priority = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5',
       [name, description, assigned_designer_id || null, priority, id]
     );
 
     if (req.files && req.files.length > 0) {
       if (replaceImages === 'true' || replaceImages === true) {
-        await db.run('DELETE FROM project_images WHERE project_id = ?', [id]);
+        await db.query('DELETE FROM project_images WHERE project_id = $1', [id]);
       }
       for (const file of req.files) {
-        await db.run(
-          'INSERT INTO project_images (project_id, image_url) VALUES (?, ?)',
+        await db.query(
+          'INSERT INTO project_images (project_id, image_url) VALUES ($1, $2)',
           [id, `/uploads/${file.filename}`]
         );
       }
     }
 
-    await db.run('COMMIT');
-    const updated = await db.get('SELECT * FROM projects WHERE id = ?', [id]);
-    res.json(updated);
+    await db.query('COMMIT');
+    const { rows: updatedRows } = await db.query('SELECT * FROM projects WHERE id = $1', [id]);
+    res.json(updatedRows[0]);
   } catch (error) {
     console.error(error);
     const db = await getDbConnection();
-    await db.run('ROLLBACK');
+    await db.query('ROLLBACK');
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -265,7 +262,7 @@ const deleteProject = async (req, res) => {
   const { id } = req.params;
   try {
     const db = await getDbConnection();
-    await db.run('DELETE FROM projects WHERE id = ?', [id]);
+    await db.query('DELETE FROM projects WHERE id = $1', [id]);
     res.json({ message: 'Project deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
@@ -275,7 +272,7 @@ const deleteProject = async (req, res) => {
 const getNotifications = async (req, res) => {
   try {
     const db = await getDbConnection();
-    const notifications = await db.all(`
+    const { rows } = await db.query(`
       SELECT a.*, p.name as project_name, u.name as user_name, u.role as user_role
       FROM activity_logs a
       JOIN projects p ON a.project_id = p.id
@@ -283,7 +280,7 @@ const getNotifications = async (req, res) => {
       ORDER BY a.created_at DESC
       LIMIT 20
     `);
-    res.json(notifications);
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }

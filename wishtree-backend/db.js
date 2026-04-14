@@ -1,11 +1,16 @@
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
+const { Pool } = require('pg');
+
+let pool;
 
 async function getDbConnection() {
-  return open({
-    filename: './database.sqlite',
-    driver: sqlite3.Database
-  });
+  if (!pool) {
+    const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/wishtree';
+    pool = new Pool({
+      connectionString,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    });
+  }
+  return pool;
 }
 
 module.exports = getDbConnection;

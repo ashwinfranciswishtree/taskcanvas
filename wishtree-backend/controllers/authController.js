@@ -13,7 +13,8 @@ const login = async (req, res) => {
 
   try {
     const db = await getDbConnection();
-    const user = await db.get('SELECT * FROM users WHERE email = ?', [email]);
+    const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = rows[0];
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -41,7 +42,8 @@ const login = async (req, res) => {
 const getMe = async (req, res) => {
   try {
     const db = await getDbConnection();
-    const user = await db.get('SELECT id, name, email, role, designation FROM users WHERE id = ?', [req.user.id]);
+    const { rows } = await db.query('SELECT id, name, email, role, designation FROM users WHERE id = $1', [req.user.id]);
+    const user = rows[0];
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {

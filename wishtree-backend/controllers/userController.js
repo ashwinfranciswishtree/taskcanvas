@@ -4,8 +4,8 @@ const bcrypt = require('bcryptjs');
 const getUsers = async (req, res) => {
   try {
     const db = await getDbConnection();
-    const users = await db.all('SELECT id, name, email, role, designation, created_at FROM users ORDER BY created_at DESC');
-    res.json(users);
+    const { rows } = await db.query('SELECT id, name, email, role, designation, created_at FROM users ORDER BY created_at DESC');
+    res.json(rows);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -18,14 +18,14 @@ const createUser = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
     
-    const result = await db.run(
-      'INSERT INTO users (name, email, password_hash, role, designation) VALUES (?, ?, ?, ?, ?)',
+    const { rows } = await db.query(
+      'INSERT INTO users (name, email, password_hash, role, designation) VALUES ($1, $2, $3, $4, $5) RETURNING id, name, email, role, designation',
       [name, email, hash, role, designation]
     );
-    const newUser = await db.get('SELECT id, name, email, role, designation FROM users WHERE id = ?', [result.lastID]);
-    res.status(201).json(newUser);
+    res.status(201).json(rows[0]);
   } catch (error) {
-    if (error.code === 'SQLITE_CONSTRAINT') return res.status(400).json({ message: 'Email already exists' });
+    // Postgres unique violation code is 23505
+    if (error.code === '23505') return res.status(400).json({ message: 'Email already exists' });
     res.status(500).json({ message: 'Server error' });
   }
 };
@@ -35,20 +35,19 @@ const updateUser = async (req, res) => {
   const { name, email, role, designation, password } = req.body;
   try {
     const db = await getDbConnection();
-    let query = 'UPDATE users SET name = ?, email = ?, role = ?, designation = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+    let query = 'UPDATE users SET name = $1, email = $2, role = $3, designation = $4, updated_at = CURRENT_TIMESTAMP WHERE id = $5 RETURNING id, name, email, role, designation';
     let values = [name, email, role, designation, id];
 
     if (password) {
       const salt = await bcrypt.genSalt(10);
       const hash = await bcrypt.hash(password, salt);
-      query = 'UPDATE users SET name = ?, email = ?, role = ?, designation = ?, password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+      query = 'UPDATE users SET name = $1, email = $2, role = $3, designation = $4, password_hash = $5, updated_at = CURRENT_TIMESTAMP WHERE id = $6 RETURNING id, name, email, role, designation';
       values = [name, email, role, designation, hash, id];
     }
 
-    await db.run(query, values);
-    const updatedUser = await db.get('SELECT id, name, email, role, designation FROM users WHERE id = ?', [id]);
-    if (!updatedUser) return res.status(404).json({ message: 'User not found' });
-    res.json(updatedUser);
+    const { rows } = await db.query(query, values);
+    if (rows.length === 0) return res.status(404).json({ message: 'User not found' });
+    res.json(rows[0]);
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -58,8 +57,8 @@ const deleteUser = async (req, res) => {
   const { id } = req.params;
   try {
     const db = await getDbConnection();
-    const result = await db.run('DELETE FROM users WHERE id = ?', [id]);
-    if (result.changes === 0) return res.status(404).json({ message: 'User not found' });
+    const result = await db.query('DELETE FROM users WHERE id = $1', [id]);
+    if (result.rowCount === 0) return res.status(404).json({ message: 'User not found' });
     res.json({ message: 'User deleted' });
   } catch (error) {
     res.status(500).json({ message: 'Server error' });
