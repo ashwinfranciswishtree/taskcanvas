@@ -91,7 +91,7 @@ const createProject = async (req, res) => {
       for (const file of req.files) {
         await db.query(
           'INSERT INTO project_images (project_id, image_url) VALUES ($1, $2)',
-          [projectId, `/uploads/${file.filename}`]
+          [projectId, file.path]
         );
       }
     }
@@ -242,7 +242,7 @@ const updateProject = async (req, res) => {
       for (const file of req.files) {
         await db.query(
           'INSERT INTO project_images (project_id, image_url) VALUES ($1, $2)',
-          [id, `/uploads/${file.filename}`]
+          [id, file.path]
         );
       }
     }
