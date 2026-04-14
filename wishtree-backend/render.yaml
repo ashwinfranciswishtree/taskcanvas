@@ -11,3 +11,5 @@ services:
         generateValue: true
       - key: NODE_VERSION
         value: 20.x
+      - key: DATABASE_URL
+        value: postgresql://designfeedback_user:kfuMnnOVyKfmAgFwIa0NcG5fgIvSxjTV@dpg-d7eqr49f9bms739pid6g-a/designfeedback
