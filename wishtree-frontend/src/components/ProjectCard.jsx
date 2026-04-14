@@ -3,11 +3,14 @@ import { Calendar, User, Clock, Image as ImageIcon, Download } from 'lucide-reac
 import { format } from 'date-fns';
 
 const ProjectCard = ({ project, actions, onClickImage }) => {
+  const getImageUrl = (url) => {
+    if (!url) return '';
+    return url.startsWith('http') ? url : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${encodeURI(url)}`;
+  };
 
   const handleDownloadMainImage = (e) => {
     e.stopPropagation();
-    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-    const imageUrl = `${API_BASE_URL}${project.images[0]}`;
+    const imageUrl = getImageUrl(project.images[0]);
     const fileName = project.images[0].split('/').pop();
     
     fetch(imageUrl)
@@ -45,7 +48,7 @@ const ProjectCard = ({ project, actions, onClickImage }) => {
         <div className="mb-5 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-sm p-2 rounded-xl border border-slate-100/50 dark:border-slate-700/50">
           <div 
             className="h-40 w-full rounded-lg bg-cover bg-center cursor-pointer shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group/img"
-            style={{ backgroundImage: `url("${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${encodeURI(project.images[0])}")` }}
+            style={{ backgroundImage: `url("${getImageUrl(project.images[0])}")` }}
             onClick={() => onClickImage(project.images)}
           >
             <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 transition-colors flex items-center justify-center gap-4">
