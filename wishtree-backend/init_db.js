@@ -72,9 +72,9 @@ const initDb = async () => {
     `);
 
     // Seed admin if doesn't exist
-    const { rows } = await db.query(`SELECT id FROM users WHERE email = $1`, ['admin@gmail.com']);
-    if (rows.length === 0) {
-      console.log("Seeding Admin user...");
+    const { rows: gmailAdminRows } = await db.query(`SELECT id FROM users WHERE email = $1`, ['admin@gmail.com']);
+    if (gmailAdminRows.length === 0) {
+      console.log("Seeding Admin user (admin@gmail.com)...");
       const salt = await bcrypt.genSalt(10);
       const adminHash = await bcrypt.hash('Admin123$%^', salt);
 
@@ -84,10 +84,30 @@ const initDb = async () => {
       );
     }
 
+    const { rows: wishtreeAdminRows } = await db.query(`SELECT id FROM users WHERE email = $1`, ['admin@wishtree.com']);
+    if (wishtreeAdminRows.length === 0) {
+      console.log("Seeding Admin user (admin@wishtree.com)...");
+      const salt = await bcrypt.genSalt(10);
+      const adminHash = await bcrypt.hash('Admin123$%^', salt);
+
+      await db.query(
+        `INSERT INTO users (name, email, password_hash, role, designation) VALUES ($1, $2, $3, $4, $5) ON CONFLICT DO NOTHING`,
+        ['Admin User', 'admin@wishtree.com', adminHash, 'Admin', 'Administrator']
+      );
+    }
+
     console.log("Database initialization complete!");
     return true;
   } catch (error) {
-    console.error("Error initializing database:", error);
+    console.error("\n========================================================");
+    console.error("❌ DATABASE INITIALIZATION ERROR:");
+    console.error(error.message);
+    console.error("--------------------------------------------------------");
+    console.error("👉 Please ensure that:");
+    console.error("1. Your DATABASE_URL environment variable is set correctly.");
+    console.error("2. Your database is online and reachable (not suspended or deleted).");
+    console.error("3. If using Render, check if your 'designfeedback' Postgres instance is suspended.");
+    console.error("========================================================\n");
     throw error;
   }
 };

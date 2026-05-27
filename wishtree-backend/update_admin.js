@@ -8,14 +8,14 @@ async function updateAdmin() {
     const hash = await bcrypt.hash('Admin123$%^', salt);
 
     // Try updating if it exist as admin@wishtree.com
-    await db.run(
-      `UPDATE users SET email = ?, password_hash = ? WHERE email = ?`,
+    await db.query(
+      `UPDATE users SET email = $1, password_hash = $2 WHERE email = $3`,
       ['admin@gmail.com', hash, 'admin@wishtree.com']
     );
 
     // Also just in case it already became admin@gmail.com, update the password anyway
-    await db.run(
-      `UPDATE users SET password_hash = ? WHERE email = ?`,
+    await db.query(
+      `UPDATE users SET password_hash = $1 WHERE email = $2`,
       [hash, 'admin@gmail.com']
     );
 

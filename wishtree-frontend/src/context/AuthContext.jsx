@@ -15,6 +15,7 @@ export const AuthProvider = ({ children }) => {
           const res = await api.get('/auth/me');
           setUser(res.data);
         } catch (error) {
+          console.error("Failed to retrieve active session from /auth/me:", error);
           localStorage.removeItem('token');
         }
       }

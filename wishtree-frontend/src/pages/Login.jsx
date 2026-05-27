@@ -14,12 +14,16 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    console.log('Attempting login for:', email);
     try {
       await login(email, password);
       toast.success('Logged in successfully!');
       navigate('/');
     } catch (err) {
-      toast.error('Invalid email or password');
+      console.error('Login failed with error:', err);
+      const apiErrorMessage = err.response?.data?.message || err.response?.data?.details || err.message;
+      const displayMessage = apiErrorMessage ? `Login failed: ${apiErrorMessage}` : 'Invalid email or password';
+      toast.error(displayMessage);
       setIsLoading(false);
     }
   };
